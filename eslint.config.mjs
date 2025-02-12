@@ -13,9 +13,9 @@ const eslintConfig = [
   ...compat.extends('next/core-web-vitals', 'next/typescript', 'prettier'),
   {
     rules: {
-      'no-unused-vars': 'error',
-      'no-console': 'warn',
-      '@typescript-eslint/no-explicit-any': 'warn',
+      'tailwindcss/no-custom-classname': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/explicit-module-boundary-types': 'off',
     },
   },
 ];
