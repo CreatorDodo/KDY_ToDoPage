@@ -8,12 +8,10 @@ export interface User {
 export interface Task {
   id: string;
   content: string;
-  assignees: User[];
-  labels?: string[];
-  priority?: 'low' | 'medium' | 'high';
+  createdBy: User;
   createdAt: Date;
   updatedAt: Date;
-  dueDate?: Date;
+  order: number;
 }
 
 export interface Board {
@@ -23,5 +21,6 @@ export interface Board {
   createdBy: User;
   createdAt: Date;
   updatedAt: Date;
+  order: number;
   description?: string;
 }

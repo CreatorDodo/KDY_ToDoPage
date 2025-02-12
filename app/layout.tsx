@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Kanban Board',
+  title: 'Project Board',
   description: '업무관리 시스템',
 };
 
