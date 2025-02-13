@@ -2,7 +2,7 @@
 
 import { DndContext, closestCorners, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
-import Board from './Board';
+import Board from './BoardCard';
 import CreateBoardForm from './CreateBoardForm';
 import { useBoardStore } from '@/stores/useBoardStore';
 import { useState } from 'react';

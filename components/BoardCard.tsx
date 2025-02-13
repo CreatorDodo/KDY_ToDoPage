@@ -5,19 +5,14 @@ import Image from 'next/image';
 import { useSortable } from '@dnd-kit/sortable';
 import { useTaskStore } from '@/stores/useTaskStore';
 import { useBoardStore } from '@/stores/useBoardStore';
-import Task from './Task';
 import TaskCard from './TaskCard';
 import CreateTaskForm from './CreateTaskForm';
-import { Task as TaskType, type Board } from '@/types';
+import type { Board, Task } from '@/types';
 import { DndContext, closestCorners, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { Pencil, Trash2, GripVertical, Check, X } from 'lucide-react';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
-interface BoardProps {
-  board: Board;
-}
-
-export default function Board({ board }: BoardProps) {
+export default function BoardCard({ board }: { board: Board }) {
   const [mounted, setMounted] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(board.title);
@@ -25,7 +20,7 @@ export default function Board({ board }: BoardProps) {
   const [description, setDescription] = useState(board.description || '');
   const { updateBoardTitle, updateBoardDescription, deleteBoard } = useBoardStore();
   const { reorderTasks } = useTaskStore();
-  const [activeTask, setActiveTask] = useState<TaskType | null>(null);
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
 
   const DEFAULT_BOARD_IDS = ['todo', 'inProgress', 'done'] as const;
   const isDefaultBoard = DEFAULT_BOARD_IDS.includes(board.id as any);
@@ -34,14 +29,8 @@ export default function Board({ board }: BoardProps) {
     setMounted(true);
   }, []);
 
-  const sensors = useSensors(useSensor(PointerSensor));
-
   const { attributes, listeners, setNodeRef, isDragging } = useSortable({
     id: board.id,
-    data: {
-      type: 'Board',
-      board,
-    },
   });
 
   const handleUpdateBoardTitle = () => {
@@ -56,35 +45,36 @@ export default function Board({ board }: BoardProps) {
     setIsEditingDesc(false);
   };
 
+  const handleDeleteBoard = () => {
+    if (window.confirm('정말로 이 보드를 삭제하시겠습니까?')) {
+      deleteBoard(board.id);
+    }
+  };
+
+  const sensors = useSensors(useSensor(PointerSensor));
+
   const handleDragStart = (event: any) => {
-    if (event.active.data.current?.type === 'Task') {
-      setActiveTask(event.active.data.current.task);
+    const { active } = event;
+    if (active.data.current?.type === 'Task') {
+      setActiveTask(active.data.current.task);
     }
   };
 
   const handleDragEnd = (event: any) => {
     const { active, over } = event;
+    setActiveTask(null);
 
-    if (active.id !== over?.id) {
-      const activeType = active.data.current?.type;
-      const overType = over?.data.current?.type;
+    if (!over) return;
 
-      if (activeType === 'Task' && overType === 'Board') {
-        const taskId = active.id;
-        const sourceBoardId = active.data.current.board.id;
-        const destinationBoardId = over.id;
-        reorderTasks(sourceBoardId, destinationBoardId, taskId);
+    if (active.id !== over.id) {
+      const oldIndex = board.tasks.findIndex((task) => task.id === active.id);
+      const newIndex = board.tasks.findIndex((task) => task.id === over.id);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        reorderTasks(board.id, oldIndex, newIndex);
       }
     }
-
-    setActiveTask(null);
   };
-
-  function handleDeleteBoard(): void {
-    if (window.confirm('정말로 이 보드를 삭제하시겠습니까?')) {
-      deleteBoard(board.id);
-    }
-  }
 
   if (!mounted) {
     return null;
@@ -189,12 +179,18 @@ export default function Board({ board }: BoardProps) {
       >
         <div className="space-y-2">
           {board.tasks.map((task) => (
-            <Task key={task.id} task={task} boardId={board.id} />
+            <TaskCard key={task.id} task={task} boardId={board.id} />
           ))}
         </div>
-        <DragOverlay>{activeTask && <TaskCard task={activeTask} />}</DragOverlay>
+        <DragOverlay dropAnimation={null}>
+          {activeTask && (
+            <div className="transform-none">
+              <TaskCard task={activeTask} boardId={board.id} />
+            </div>
+          )}
+        </DragOverlay>
       </DndContext>
-      <CreateTaskForm />
+      <CreateTaskForm boardId={board.id} />
     </div>
   );
 }
