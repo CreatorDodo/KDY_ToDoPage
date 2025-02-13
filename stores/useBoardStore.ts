@@ -11,6 +11,7 @@ const defaultBoards: Board[] = [
     createdBy: mockUsers[0],
     createdAt: new Date(),
     updatedAt: new Date(),
+    description: 'This is a Todo board',
     order: 0,
   },
   {
@@ -20,6 +21,7 @@ const defaultBoards: Board[] = [
     createdBy: mockUsers[0],
     createdAt: new Date(),
     updatedAt: new Date(),
+    description: 'This is In Progress board',
     order: 1,
   },
   {
@@ -29,6 +31,7 @@ const defaultBoards: Board[] = [
     createdBy: mockUsers[0],
     createdAt: new Date(),
     updatedAt: new Date(),
+    description: 'This is Done board',
     order: 2,
   },
 ];
@@ -37,7 +40,9 @@ interface BoardStore {
   boards: Board[];
   setBoards: (boards: Board[]) => void;
   addBoard: (title: string) => void;
-
+  updateBoardTitle: (id: string, title: string) => void;
+  updateBoardDescription: (id: string, description: string) => void;
+  deleteBoard: (id: string) => void;
   reorderBoards: (startIndex: number, endIndex: number) => void;
 }
 
@@ -61,7 +66,18 @@ export const useBoardStore = create<BoardStore>()(
             },
           ],
         })),
-
+      updateBoardTitle: (id, title) =>
+        set((state) => ({
+          boards: state.boards.map((board) => (board.id === id ? { ...board, title } : board)),
+        })),
+      updateBoardDescription: (id, description) =>
+        set((state) => ({
+          boards: state.boards.map((board) => (board.id === id ? { ...board, description } : board)),
+        })),
+      deleteBoard: (id) =>
+        set((state) => ({
+          boards: state.boards.filter((board) => board.id !== id),
+        })),
       reorderBoards: (startIndex, endIndex) =>
         set((state) => {
           const newBoards = [...state.boards];
@@ -76,7 +92,9 @@ export const useBoardStore = create<BoardStore>()(
         boards: state.boards,
         setBoards: state.setBoards,
         addBoard: state.addBoard,
-
+        updateBoardTitle: state.updateBoardTitle,
+        updateBoardDescription: state.updateBoardDescription,
+        deleteBoard: state.deleteBoard,
         reorderBoards: state.reorderBoards,
       }),
     },

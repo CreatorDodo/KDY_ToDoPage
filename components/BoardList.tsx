@@ -1,22 +1,24 @@
 'use client';
 
-import { DndContext, closestCorners, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { DndContext, closestCorners, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
+import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
 import Board from './Board';
 import CreateBoardForm from './CreateBoardForm';
 import { useBoardStore } from '@/stores/useBoardStore';
+import { useState } from 'react';
 
 export default function BoardList() {
   const { boards, reorderBoards } = useBoardStore();
+  const [activeId, setActiveId] = useState<string | null>(null);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
+  const sensors = useSensors(useSensor(PointerSensor));
+
+  const handleDragStart = (event: any) => {
+    setActiveId(event.active.id);
+  };
 
   const handleDragEnd = (event: any) => {
+    setActiveId(null);
     const { active, over } = event;
 
     if (!over) return;
@@ -29,12 +31,17 @@ export default function BoardList() {
   };
 
   return (
-    <div className="p-4">
-      <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
-        <SortableContext items={boards.map((board) => board.id)} strategy={verticalListSortingStrategy}>
+    <div>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={boards.map((board) => board.id)} strategy={rectSortingStrategy}>
           <div className={`flex gap-2 ${boards.length >= 5 ? 'flex-wrap' : 'overflow-x-auto'}`}>
             {boards.map((board) => (
-              <div key={board.id} className="min-w-56 flex-shrink basis-56">
+              <div key={board.id} className="min-w-56 flex-shrink basis-1/5">
                 <Board board={board} />
               </div>
             ))}
@@ -43,6 +50,13 @@ export default function BoardList() {
             </div>
           </div>
         </SortableContext>
+        <DragOverlay>
+          {activeId ? (
+            <div className="min-w-56 flex-shrink basis-1/5 opacity-80">
+              <Board board={boards.find((board) => board.id === activeId)!} />
+            </div>
+          ) : null}
+        </DragOverlay>
       </DndContext>
     </div>
   );

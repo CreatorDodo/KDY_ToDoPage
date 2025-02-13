@@ -1,24 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { useTaskStore } from '@/stores/useTaskStore';
+import { useBoardStore } from '@/stores/useBoardStore';
 import Task from './Task';
 import TaskCard from './TaskCard';
 import CreateTaskForm from './CreateTaskForm';
 import { Task as TaskType, type Board } from '@/types';
-import {
-  DndContext,
-  closestCorners,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragOverlay,
-} from '@dnd-kit/core';
-import { Pencil, Trash2, GripVertical } from 'lucide-react';
+import { DndContext, closestCorners, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
+import { Pencil, Trash2, GripVertical, Check, X } from 'lucide-react';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
 interface BoardProps {
@@ -26,28 +18,41 @@ interface BoardProps {
 }
 
 export default function Board({ board }: BoardProps) {
+  const [mounted, setMounted] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [isEditingDesc, setIsEditingDesc] = useState(false);
   const [title, setTitle] = useState(board.title);
+  const [isEditingDesc, setIsEditingDesc] = useState(false);
   const [description, setDescription] = useState(board.description || '');
+  const { updateBoardTitle, updateBoardDescription, deleteBoard } = useBoardStore();
   const { reorderTasks } = useTaskStore();
   const [activeTask, setActiveTask] = useState<TaskType | null>(null);
 
-  const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
+  const DEFAULT_BOARD_IDS = ['todo', 'inProgress', 'done'] as const;
+  const isDefaultBoard = DEFAULT_BOARD_IDS.includes(board.id as any);
 
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: board.id });
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
+  const sensors = useSensors(useSensor(PointerSensor));
 
-  const handleUpdateTitle = () => {
-    setIsEditing(false);
+  const { attributes, listeners, setNodeRef, isDragging } = useSortable({
+    id: board.id,
+    data: {
+      type: 'Board',
+      board,
+    },
+  });
+
+  const handleUpdateBoardTitle = () => {
+    if (title.trim()) {
+      updateBoardTitle(board.id, title);
+      setIsEditing(false);
+    }
   };
 
   const handleUpdateDescription = () => {
-    // 여기에 description 업데이트 로직 추가 필요
+    updateBoardDescription(board.id, description);
     setIsEditingDesc(false);
   };
 
@@ -76,64 +81,77 @@ export default function Board({ board }: BoardProps) {
   };
 
   function handleDeleteBoard(): void {
-    throw new Error('Function not implemented.');
+    if (window.confirm('정말로 이 보드를 삭제하시겠습니까?')) {
+      deleteBoard(board.id);
+    }
+  }
+
+  if (!mounted) {
+    return null;
   }
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className={`min-h-40 max-w-full rounded-lg bg-white p-2 shadow sm:p-3 md:p-4 ${isDragging ? 'cursor-grabbing opacity-50' : 'cursor-grab'} transition-shadow duration-200 hover:shadow-lg`}
-    >
+    <div className="min-h-40 max-w-full rounded-lg bg-white p-2 shadow transition-shadow duration-200 hover:shadow-lg sm:p-3 md:p-4">
       <div className="mb-2 sm:mb-4">
         <div className="mb-1 flex items-center sm:mb-2">
-          <GripVertical className="mr-1 h-4 w-4 text-gray-400 sm:mr-2 sm:h-5 sm:w-5" />
-          {isEditing ? (
-            <div className="flex flex-grow items-center space-x-2">
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="flex-grow rounded border p-1"
-                autoFocus
-              />
-              <button onClick={handleUpdateTitle} className="text-blue-500">
-                저장
-              </button>
-              <button onClick={() => setIsEditing(false)} className="text-gray-500">
-                취소
-              </button>
+          <div
+            ref={setNodeRef}
+            {...attributes}
+            {...listeners}
+            className={`${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+          >
+            <GripVertical className="mr-1 h-4 w-4 text-gray-400 sm:mr-2 sm:h-5 sm:w-5" />
+          </div>
+          <div className="flex flex-grow items-center justify-between">
+            <div className="flex items-center gap-2">
+              {isEditing ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="rounded border p-1 text-sm font-bold"
+                    autoFocus
+                  />
+                  <div className="flex items-center gap-1">
+                    <button onClick={handleUpdateBoardTitle} className="text-green-500 hover:text-green-600">
+                      <Check className="h-4 w-4" />
+                    </button>
+                    <button onClick={() => setIsEditing(false)} className="text-red-500 hover:text-red-600">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <h3 className="text-sm font-bold sm:text-base md:text-base">{board.title}</h3>
+                  <Image
+                    src={board.createdBy.avatar}
+                    alt={board.createdBy.name}
+                    width={16}
+                    height={16}
+                    className="h-6 w-6 rounded-full border border-white shadow-sm"
+                    priority
+                  />
+                  {!isDefaultBoard && (
+                    <div className="flex items-center space-x-1 sm:space-x-2">
+                      <button onClick={() => setIsEditing(true)} className="text-gray-500 hover:text-blue-500">
+                        <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
+                      </button>
+                      <button onClick={handleDeleteBoard} className="text-gray-500 hover:text-red-500">
+                        <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
-          ) : (
-            <div className="flex flex-grow items-center justify-between">
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold sm:text-base md:text-base">{board.title}</h3>
-                <Image
-                  src={board.createdBy.avatar}
-                  alt={board.createdBy.name}
-                  width={16}
-                  height={16}
-                  className="h-6 w-6 rounded-full border border-white shadow-sm"
-                  priority
-                />
-              </div>
-              <div className="flex items-center space-x-1 sm:space-x-2">
-                <button onClick={() => setIsEditing(true)} className="text-gray-500 hover:text-blue-500">
-                  <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
-                </button>
-                <button onClick={() => handleDeleteBoard()} className="text-gray-500 hover:text-red-500">
-                  <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                </button>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
 
         <div className="flex items-center">
           <div className="flex-grow">
-            {isEditingDesc ? (
+            {isEditingDesc && !isDefaultBoard ? (
               <div className="flex items-center space-x-2">
                 <input
                   type="text"
@@ -152,8 +170,8 @@ export default function Board({ board }: BoardProps) {
               </div>
             ) : (
               <p
-                onClick={() => setIsEditingDesc(true)}
-                className="cursor-pointer text-xs text-gray-500 hover:text-gray-700 sm:text-sm"
+                onClick={() => !isDefaultBoard && setIsEditingDesc(true)}
+                className={`text-xs text-gray-500 sm:text-sm ${!isDefaultBoard ? 'cursor-pointer hover:text-gray-700' : ''}`}
               >
                 {description || '설명 추가...'}
               </p>
